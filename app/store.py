@@ -9,9 +9,14 @@ def connection():
 def save(result):
     with connection() as db:
         ident=result['manifest']['run_id'];row=db.execute('SELECT payload,revision,decision FROM runs WHERE id=?',(ident,)).fetchone()
-        if row: return {**json.loads(row['payload']), 'revision':row['revision'], 'decision':row['decision'], 'reused':True}
+        if row:
+            return {**json.loads(row['payload']), 'revision':row['revision'], 'decision':row['decision'], 'reused':True}
         db.execute('INSERT INTO runs(id,payload) VALUES (?,?)',(ident,json.dumps(result,ensure_ascii=False)))
-    return {**result,'revision':1,'decision':'待复核','reused':False}
+    from app import ledger
+    payload=get_run(ident)
+    ledger.ensure(ident,1,())
+    return {**result,'revision':1,'decision':'待复核','reused':False,
+            'plan':ledger.current(ident)}
 def get_run(ident):
     with connection() as db: row=db.execute('SELECT payload,revision,decision FROM runs WHERE id=?',(ident,)).fetchone()
     if row is None: raise DomainError('NOT_FOUND','批次不存在',404)

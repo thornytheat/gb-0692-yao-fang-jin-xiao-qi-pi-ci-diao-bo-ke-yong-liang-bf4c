@@ -1,5 +1,10 @@
-from app.domain import allocate
+from app.plan import build_plan
 def apply(ctx):
-    rows,left,short=allocate(ctx['usable'],ctx['net_demands']);ctx.update(allocations=rows,remaining=left,shortages=short)
-    return {'rows':rows,'metrics':[['调拨',sum(r['调拨数量'] for r in rows),'件'],['分配行',len(rows),'条'],['缺口',sum(r['缺口'] for r in short),'件']]}
-
+    plan=build_plan(ctx['usable'],ctx['net_demands'],ctx.get('receipts',()),
+                    ctx.get('voids',()),ctx.get('plan_version',1))
+    ctx.update(allocations=plan['allocations'],remaining=plan['remaining'],
+               shortages=plan['shortages'],plan=plan,substitutions=plan['substitutions'],
+               refills=plan['refills'],gaps=plan['gaps'],
+               receipts_locked=plan['receipts'],plan_rows=plan['plan_rows'],
+               residual=plan['residual'])
+    return {'rows':plan['plan_rows'],'metrics':plan['metrics']}
